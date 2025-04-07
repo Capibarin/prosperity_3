@@ -14,6 +14,10 @@ class Trader:
         """
         result = {}
 
+        if len(self.history) == 0:
+            for product in state.position.keys():
+                self.history.update({product: []})
+
         for product in state.order_depths.keys():
                 order_depth: OrderDepth = state.order_depths[product]
                 orders: list[Order] = []
@@ -29,25 +33,29 @@ class Trader:
                 hist_date = hist_data[-101:]
                 self.history.update({product: hist_data})
 
-                # std = np.std([hist_data[i] / hist_data[i-1] for i in range(1, len(hist_data))])
-                up = int(np.sum([(hist_data[i] / hist_data[i-1]) - 1 for i in range(1, len(hist_data))][-10:]) >= 0)
-                spread = min(6, max(2, best_ask - best_bid)) / 2
-                
-                ask = mid_price + spread
-                bid = mid_price - spread
+                if len(hist_date) >= 101:
+                    std = np.std([hist_data[i] / hist_data[i-1] for i in range(1, len(hist_data))])
+                    trend = np.mean([(hist_data[i] / hist_data[i-1]) - 1 for i in range(1, len(hist_data))][-10:])
 
-                if state.position[product] >= 0:
-                    best_ask_volume = n - state.position[product]
-                    best_bid_volume = -n
-                else:
-                    best_ask_volume = n
-                    best_bid_volume = -n + state.position[product]
+                    if trend > std:
+                        best_ask += 1
+                        best_bid += 1
+                    elif trend < -std:
+                        best_ask -= 1
+                        best_bid -= 1
+                    
+                    if state.position[product] >= 0:
+                        best_bid_volume = n - state.position[product]
+                        best_ask_volume = -n
+                    else:
+                        best_bid_volume = n
+                        best_ask_volume = -n - state.position[product]
 
-                print("SELL", str(best_ask_volume) + "x", best_ask)
-                orders.append(Order(product, best_ask, best_ask_volume))
+                    print("SELL", str(best_ask_volume) + "x", best_ask)
+                    orders.append(Order(product, best_ask, best_ask_volume))
 
-                print("BUY", str(best_bid_volume) + "x", best_bid)
-                orders.append(Order(product, best_bid, best_bid_volume))
+                    print("BUY", str(best_bid_volume) + "x", best_bid)
+                    orders.append(Order(product, best_bid, best_bid_volume))
 
                 result[product] = orders
                 
