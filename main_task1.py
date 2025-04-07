@@ -6,6 +6,11 @@ import numpy as np
 class Trader:
     def __init__(self):
         self.history = dict()
+        self.sp_match = dict()
+
+        self.stock_limit = 10
+        self.std_len = 100
+        self.mean_len = 10
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
         """
@@ -14,28 +19,32 @@ class Trader:
         """
         result = {}
 
+        if len(self.sp_match) == 0:
+            for symbol in state.listings.keys():
+                self.sp_match[state.listings[symbol].product] = symbol
+                self.history[symbol] = []
+
         if len(self.history) == 0:
-            for product in state.position.keys():
-                self.history.update({product: []})
+            for symbol in state.listings.keys():
+                self.history[symbol] = []
 
-        for product in state.order_depths.keys():
-                order_depth: OrderDepth = state.order_depths[product]
+        for symbol in state.order_depths.keys():
+                order_depth: OrderDepth = state.order_depths[symbol]
                 orders: list[Order] = []
-
-                n = 10
 
                 best_ask = min(order_depth.sell_orders.keys())
                 best_bid = max(order_depth.buy_orders.keys())
                 mid_price = (best_ask + best_bid) / 2
-
-                hist_data = self.history[product]
+                
+                hist_data = self.history[symbol]
                 hist_data.append(mid_price)
-                hist_date = hist_data[-101:]
-                self.history.update({product: hist_data})
+                hist_date = hist_data[-(self.std_len + 1):]
+                self.history[symbol] = hist_data
 
-                if len(hist_date) >= 101:
-                    std = np.std([hist_data[i] / hist_data[i-1] for i in range(1, len(hist_data))])
-                    trend = np.mean([(hist_data[i] / hist_data[i-1]) - 1 for i in range(1, len(hist_data))][-10:])
+                if len(hist_date) >= self.std_len + 1:
+                    price_dif = [(hist_data[i] / hist_data[i-1]) - 1 for i in range(1, len(hist_data))]
+                    std = np.std(price_dif)
+                    trend = np.mean(price_dif[-self.mean_len:])
 
                     if trend > std:
                         best_ask += 1
@@ -44,20 +53,24 @@ class Trader:
                         best_ask -= 1
                         best_bid -= 1
                     
-                    if state.position[product] >= 0:
-                        best_bid_volume = n - state.position[product]
-                        best_ask_volume = -n
+                    if self.sp_match[symbol] in state.position.keys():
+                        if state.position[self.sp_match[symbol]] >= 0:
+                            best_bid_volume = self.stock_limit - state.position[self.sp_match[symbol]]
+                            best_ask_volume = -self.stock_limit
+                        else:
+                            best_bid_volume = self.stock_limit
+                            best_ask_volume = -self.stock_limit - state.position[self.sp_match[symbol]]
                     else:
-                        best_bid_volume = n
-                        best_ask_volume = -n - state.position[product]
+                        best_bid_volume = self.stock_limit
+                        best_ask_volume = -self.stock_limit
 
                     print("SELL", str(best_ask_volume) + "x", best_ask)
-                    orders.append(Order(product, best_ask, best_ask_volume))
+                    orders.append(Order(symbol, best_ask, best_ask_volume))
 
                     print("BUY", str(best_bid_volume) + "x", best_bid)
-                    orders.append(Order(product, best_bid, best_bid_volume))
+                    orders.append(Order(symbol, best_bid, best_bid_volume))
 
-                result[product] = orders
+                result[symbol] = orders
                 
         traderData = "SAMPLE"
         
