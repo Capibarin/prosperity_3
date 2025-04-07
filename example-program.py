@@ -48,6 +48,7 @@ class Trader:
                 # If the price of the order is higher than the fair value
                 # This is an opportunity to sell at a premium
                 if len(order_depth.buy_orders) != 0:
+                    a = 5
                     best_bid = max(order_depth.buy_orders.keys())
                     best_bid_volume = order_depth.buy_orders[best_bid]
                     if best_bid > acceptable_price:
