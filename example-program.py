@@ -16,6 +16,7 @@ class Trader:
         for product in state.order_depths.keys():
 
                 # Retrieve the Order Depth containing all the market BUY and SELL orders
+                # [VIh] The same as writing order_depth = state.order_depths[product]
                 order_depth: OrderDepth = state.order_depths[product]
 
                 # Initialize the list of Orders to be sent as an empty list
