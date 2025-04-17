@@ -52,8 +52,8 @@ class Trader:
 
             if symbol == 'RAINFOREST_RESIN':
                 orders = self.rainforest(symbol, position)
-            elif symbol == 'CROISSANTS': # 'CROISSANTS' 'PICNIC_BASKET1'
-                orders = self.picnic(symbol, position)
+            elif symbol == 'MAGNIFICENT_MACARONS':
+                orders = self.macarons(symbol, position)
             elif symbol == 'VOLCANIC_ROCK': # 'VOLCANIC_ROCK_VOUCHER_XXXX'
                 orders = self.vrock(symbol, position)
 
@@ -68,49 +68,8 @@ class Trader:
                 Order(symbol, 10001, min(0, -50 - position))]
     
         # return []
-    
-    def picnic(self, symbol, position):
-        # # Get historical data for both the stock and ETF
-        # stock_hist = self.history[symbol]
-        # etf_hist = self.history['PICNIC_BASKET1']
-        
-        # # Ensure we have enough data points
-        # if len(stock_hist) < self.regression_window or len(etf_hist) < self.regression_window:
-        #     return []
-            
-        # # Take the most recent data points
-        # stock_prices = np.array(stock_hist[-self.regression_window:])
-        # etf_prices = np.array(etf_hist[-self.regression_window:])
-        
-        # # Calculate log returns
-        # # stock_log_returns = np.log(stock_prices[1:] / stock_prices[:-1])
-        # # etf_log_returns = np.log(etf_prices[1:] / etf_prices[:-1])
 
-        # stock_log_returns = np.log(stock_prices)
-        # etf_log_returns = np.log(etf_prices)
-        
-        # # Perform linear regression
-        # slope, intercept = linear_regression(etf_log_returns, stock_log_returns)
-        # predicted_stock_returns = slope * etf_log_returns + intercept
-        # residuals = stock_log_returns - predicted_stock_returns
-        # std_err = np.std(residuals)
-        # deviation = residuals[-1] / std_err
-        
-        # orders = []
-        # if abs(deviation) > 3:
-        #     if deviation > 0:
-        #         orders.append(Order(symbol, self.best_bid[symbol], max(min(0, -250 - position), -250)))
-        #     else:
-        #         orders.append(Order(symbol, self.best_ask[symbol], min(max(0, 250 - position), 250)))
-
-        # if position != 0:
-        #     if position > 0 and deviation > -2:
-        #         orders.append(Order(symbol, self.best_bid[symbol], -position))
-        #     elif position < 0 and deviation < 2:
-        #         orders.append(Order(symbol, self.best_ask[symbol], -position))
-
-        # return orders
-    
+    def macarons(self, symbol, position):
         return []
     
     def vrock(self, symbol, position):
