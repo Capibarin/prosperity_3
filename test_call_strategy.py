@@ -11,7 +11,7 @@ class Trader:
         self.entry_value = 0.0
         self.a = 10150  # Lower bound for local maxima [TO ADJUST]
         self.b = 10250  # Upper bound for local maxima [TO ADJUST]
-        self.position_size = 10  # Number of contracts to trade [TO ADJUST]
+        self.position_size = 100  # Number of contracts to trade [TO ADJUST]
 
     def get_mid_price(self, state: TradingState, product: Symbol) -> float:
         order_depth = state.order_depths.get(product, OrderDepth())
@@ -19,31 +19,31 @@ class Trader:
         best_ask = min(order_depth.sell_orders.keys()) if order_depth.sell_orders else 0
         return (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
-    def check_conditions(self, data, a, b):
+    def check_conditions(self, data, a, b):  # remove inputs and self.
         window_size = 75  # [TO ADJUST]
-        required_maxima = 2  # [TO ADJUST]
+        required_maxima = 3  # [TO ADJUST]
 
         if len(data) < window_size:
             return False
 
-        for i in range(len(data) - window_size + 1):
-            window = data[i:i + window_size]
-            local_maxima = []
-            for j in range(1, len(window) - 1):
-                if window[j] > window[j - 1] and window[j] > window[j + 1]:
-                    if a <= window[j] <= b:
-                        local_maxima.append(window[j])
-            if len(local_maxima) >= required_maxima and all(m <= b for m in window):
-                return True
+        i = len(data) - window_size + 1
+        window = data[i:i + window_size]
+        local_maxima = []
+        for j in range(1, len(window) - 1):
+            if window[j] > window[j - 1] and window[j] > window[j + 1]:
+                if a <= window[j] <= b:
+                    local_maxima.append(window[j])
+        if len(local_maxima) >= required_maxima and all(m <= b for m in window):
+            return True
         return False
 
     def run(self, state: TradingState):
         result = {}
-        conversions = 0
+        conversions = 1
         trader_data = "SAMPLE"
 
         # Main product and its options
-        volcanic = 'VOLCANIC ROCK'
+        volcanic = 'VOLCANIC_ROCK'
         option1 = 'VOLCANIC_ROCK_VOUCHER_10250'
         option2 = 'VOLCANIC_ROCK_VOUCHER_10500'
 
@@ -82,25 +82,22 @@ class Trader:
 
         # Monitor existing positions
         if self.option1_position != 0 or self.option2_position != 0:
-            current_value = (option1_price * self.option1_position) + (option2_price * self.option2_position)
+            # Get current executable prices for exit
 
-            if self.entry_value != 0:
-                pct_change = (current_value - self.entry_value) / abs(self.entry_value)
+            # New exit condition based on volcanic price
+            if volcanic_price >= 10375 or volcanic_price <= 10150:
+                # Close OPTION 1 short position (buy back)
+                if option1_price and self.option1_position < 0:
+                    result[option1] = [Order(option1, option1_price, abs(self.option1_position))]
 
-                # Check exit conditions [TO ADJUST]
-                if pct_change >= 0.10 or pct_change <= -0.03:
-                    # Close OPTION 1 position
-                    if self.option1_position < 0:
-                        result[option1] = [Order(option1, option1_price, abs(self.option1_position))]
+                # Close OPTION 2 long position (sell)
+                if option2_price and self.option2_position > 0:
+                    result[option2] = [Order(option2, option2_price, -self.option2_position)]
 
-                    # Close OPTION 2 position
-                    if self.option2_position > 0:
-                        result[option2] = [Order(option2, option2_price, -self.option2_position)]
-
-                    # Reset positions
+                # Reset positions only if both legs executed
+                if option1 in result and option2 in result:
                     self.option1_position = 0
                     self.option2_position = 0
                     self.entry_value = 0.0
 
         return result, conversions, trader_data
-    
