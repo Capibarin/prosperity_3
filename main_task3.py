@@ -54,7 +54,7 @@ class Trader:
                 orders = self.rainforest(symbol, position)
             elif symbol == 'PICNIC_BASKET1': # 'CROISSANTS'
                 orders = self.picnic(symbol, position)
-            elif orders == 'VOLCANIC_ROCK': # 'VOLCANIC_ROCK_VOUCHER_XXXX'
+            elif symbol == 'VOLCANIC_ROCK': # 'VOLCANIC_ROCK_VOUCHER_XXXX'
                 orders = self.vrock(symbol, position)
 
             result[symbol] = orders
