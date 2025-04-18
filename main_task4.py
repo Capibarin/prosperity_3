@@ -11,6 +11,9 @@ class Trader:
         self.sp_match = dict()
         self.best_ask = dict()
         self.best_bid = dict()
+        self.avg_buy_price = dict()
+        self.last_position = dict()
+        self.last_buy_price = dict()
         
         self.std_len = 100
         self.regression_window = 75
@@ -26,10 +29,9 @@ class Trader:
             for symbol in state.listings.keys():
                 self.sp_match[state.listings[symbol].product] = symbol
                 self.history[symbol] = []
-
-        if len(self.history) == 0:
-            for symbol in state.listings.keys():
-                self.history[symbol] = []
+                self.last_position[symbol] = 0
+                self.avg_buy_price[symbol] = 0
+                self.last_buy_price[symbol] = 0 
 
         for symbol in state.order_depths.keys():
             order_depth: OrderDepth = state.order_depths[symbol]
@@ -53,7 +55,7 @@ class Trader:
             if symbol == 'RAINFOREST_RESIN':
                 orders = self.rainforest(symbol, position)
             elif symbol == 'MAGNIFICENT_MACARONS':
-                orders = self.macarons(symbol, position)
+                orders = self.macarons(symbol, position, state)
             elif symbol == 'VOLCANIC_ROCK': # 'VOLCANIC_ROCK_VOUCHER_XXXX'
                 orders = self.vrock(symbol, position)
 
@@ -69,7 +71,38 @@ class Trader:
     
         # return []
 
-    def macarons(self, symbol, position):
+    def macarons(self, symbol, position, state):
+        # orders = []
+        # alpha = 1.03
+        # obs = state.observations.conversionObservations[self.sp_match[symbol]]
+
+        # if self.last_position[symbol] < position:
+        #     self.avg_buy_price[symbol] = (self.avg_buy_price[symbol] * self.last_position[symbol] +\
+        #                            self.last_buy_price[symbol] * (position - self.last_position[symbol])) / position
+        #     self.last_position[symbol] = position
+        #     self.last_buy_price[symbol] = self.best_ask[symbol] + obs.transportFees - obs.importTariff
+        # else:
+        #     self.last_position[symbol] = position
+        #     self.last_buy_price[symbol] = self.best_ask[symbol] + obs.transportFees - obs.importTariff
+
+        # if self.last_position[symbol] == 0:
+        #     self.avg_buy_price[symbol] = 1e9
+
+        # beta = np.array([58.54413036, -64.73096913, -53.46953419, 4.38106356, -3.46720391])
+        # beta_0 = 338.05
+        # x = np.array([obs.transportFees, obs.exportTariff, obs.importTariff, obs.sugarPrice, obs.sunlightIndex])
+        # predicted_price = x @ beta + beta_0 - 2 * obs.transportFees + obs.importTariff - obs.exportTariff
+
+        # if predicted_price > self.best_ask[symbol] * alpha\
+        #       and self.last_buy_price[symbol] < self.avg_buy_price[symbol]\
+        #       and self.last_position[symbol] < 70:
+        #     orders.append(Order(symbol, self.best_ask[symbol], max(0, min(70 - self.last_position[symbol], 10))))
+
+        # if self.avg_buy_price[symbol] * alpha + obs.transportFees + obs.exportTariff < self.best_bid[symbol]:
+        #     orders.append(Order(symbol, self.best_bid[symbol], -position))
+
+        # return orders
+
         return []
     
     def vrock(self, symbol, position):
