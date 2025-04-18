@@ -1,53 +1,106 @@
-import pandas as pd
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from typing import List
+from datamodel import OrderDepth, TradingState, Order, Symbol
+from typing import List, Dict
 
-# Generate price data starting near your bounds
-df = pd.DataFrame({'price': 10.5 + np.cumsum(np.random.randn(500) * 0.01)})
 
-# Parameters
-window_size = 100
-smooth_window = 5
-min_price = 10.5
-max_price = 11.0
+# In the Call credit spread there are 6 adjustments available (see [TO ADJUST])
+class Trader:
+    def __init__(self):
+        self.volcanic_data = []  # Historical data for VOLCANIC ROCK
+        self.option1_position = 0
+        self.option2_position = 0
+        self.entry_value = 0.0
+        self.a = 10150  # Lower bound for local maxima [TO ADJUST]
+        self.b = 10250  # Upper bound for local maxima [TO ADJUST]
+        self.position_size = 10  # Number of contracts to trade [TO ADJUST]
 
-# Container to store qualifying timestamps and maxima points
-local_max_counts = []
-all_maxima = []  # To store all maxima points for plotting
+    def get_mid_price(self, state: TradingState, product: Symbol) -> float:
+        order_depth = state.order_depths.get(product, OrderDepth())
+        best_bid = max(order_depth.buy_orders.keys()) if order_depth.buy_orders else 0
+        best_ask = min(order_depth.sell_orders.keys()) if order_depth.sell_orders else 0
+        return (best_bid + best_ask) / 2 if best_bid and best_ask else 0.0
 
-for i in range(window_size, len(df)):
-    window = df.iloc[i - window_size:i].copy()
-    prices = window['price'].values
+    def check_conditions(self, data, a, b):
+        window_size = 75  # [TO ADJUST]
+        required_maxima = 2  # [TO ADJUST]
 
-    # Step 1: Smooth using moving average
-    smoothed = np.convolve(prices, np.ones(smooth_window) / smooth_window, mode='valid')
+        if len(data) < window_size:
+            return False
 
-    # Step 2: Approximate derivative
-    derivative = np.diff(smoothed)
+        for i in range(len(data) - window_size + 1):
+            window = data[i:i + window_size]
+            local_maxima = []
+            for j in range(1, len(window) - 1):
+                if window[j] > window[j - 1] and window[j] > window[j + 1]:
+                    if a <= window[j] <= b:
+                        local_maxima.append(window[j])
+            if len(local_maxima) >= required_maxima and all(m <= b for m in window):
+                return True
+        return False
 
-    # Step 3: Detect local maxima
-    local_max_idx = []
-    for j in range(1, len(derivative) - 1):
-        if derivative[j - 1] > 0 > derivative[j]:
-            local_max_idx.append(j)
+    def run(self, state: TradingState):
+        result = {}
+        conversions = 0
+        trader_data = "SAMPLE"
 
-    # Step 4: Get max values and filter by price bounds
-    local_max_vals = [smoothed[j] for j in local_max_idx]
-    filtered_vals = [v for v in local_max_vals if min_price <= v <= max_price]
+        # Main product and its options
+        volcanic = 'VOLCANIC ROCK'
+        option1 = 'VOLCANIC_ROCK_VOUCHER_10250'
+        option2 = 'VOLCANIC_ROCK_VOUCHER_10500'
 
-    # Store all maxima for plotting
-    for idx in local_max_idx:
-        # Get the corresponding index in the original DataFrame
-        original_idx = window.index[idx + smooth_window // 2]
-        all_maxima.append((original_idx, smoothed[idx]))
+        # Get current prices
+        volcanic_price = self.get_mid_price(state, volcanic)
 
-    # Step 5: Check if 3+ maxima lie within the interval
-    if len(filtered_vals) >= 3:
-        local_max_counts.append((df.index[i], len(filtered_vals)))
+        order_depth_option1 = state.order_depths.get(option1, OrderDepth())
+        # Best bid
+        option1_price = max(order_depth_option1.buy_orders.keys()) if order_depth_option1.buy_orders else 0
 
-# Print results
-print(f"Found {len(local_max_counts)} qualifying windows")
-for t, count in local_max_counts:
-    print(f"{t}: {count} local maxima in price range [{min_price}, {max_price}]")
+        order_depth_option2 = state.order_depths.get(option1, OrderDepth())
+        # Best ask
+        option2_price = min(order_depth_option2.sell_orders.keys()) if order_depth_option2.sell_orders else 0
+
+        # Update volcanic rock data
+        if volcanic_price > 0:
+            self.volcanic_data.append(volcanic_price)
+
+        # Check trading conditions
+        condition_met = self.check_conditions(self.volcanic_data, self.a, self.b)
+
+        # Enter positions if condition met and not in position
+        if condition_met and self.option1_position == 0 and self.option2_position == 0:
+            # Short OPTION 1
+            if option1_price > 0:
+                result[option1] = [Order(option1, option1_price, -self.position_size)]
+
+            # Long OPTION 2
+            if option2_price > 0:
+                result[option2] = [Order(option2, option2_price, self.position_size)]
+
+            # Record positions and entry value
+            self.option1_position = -self.position_size
+            self.option2_position = self.position_size
+            self.entry_value = (-option1_price + option2_price) * self.position_size
+
+        # Monitor existing positions
+        if self.option1_position != 0 or self.option2_position != 0:
+            current_value = (option1_price * self.option1_position) + (option2_price * self.option2_position)
+
+            if self.entry_value != 0:
+                pct_change = (current_value - self.entry_value) / abs(self.entry_value)
+
+                # Check exit conditions [TO ADJUST]
+                if pct_change >= 0.10 or pct_change <= -0.03:
+                    # Close OPTION 1 position
+                    if self.option1_position < 0:
+                        result[option1] = [Order(option1, option1_price, abs(self.option1_position))]
+
+                    # Close OPTION 2 position
+                    if self.option2_position > 0:
+                        result[option2] = [Order(option2, option2_price, -self.option2_position)]
+
+                    # Reset positions
+                    self.option1_position = 0
+                    self.option2_position = 0
+                    self.entry_value = 0.0
+
+        return result, conversions, trader_data
+    
